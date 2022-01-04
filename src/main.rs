@@ -1,5 +1,3 @@
-#![feature(int_log)]
-#[allow(non_snake_case)]
 use rand::{distributions::Uniform, Rng};
 use std::{
     collections::{HashSet, VecDeque},
@@ -48,7 +46,7 @@ fn main() {
 
     #[allow(non_snake_case)]
     let mut flattened_A = vec![0; n * n];
-    let depth: usize = n.log2() as usize;
+    let depth: usize = log2(n);
     let coordinate_iter: Vec<(usize, Coordinates)> =
         hilbert_iter(depth).into_iter().enumerate().collect();
     for (t, (i, j)) in &coordinate_iter {
@@ -84,6 +82,10 @@ fn main() {
         "Improvement: {}%",
         100. * (1.0 - (total_h_seconds / total_n_seconds))
     );
+}
+
+fn log2(n: usize) -> usize {
+    (n as f64).log2().floor() as usize
 }
 
 /// Create a matrix.
