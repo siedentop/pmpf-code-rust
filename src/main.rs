@@ -14,14 +14,14 @@ the continuous interval [0,1] is mapped to the unit square [0,1]^2.
 */
 
 type Coordinates = (usize, usize);
-type Matrix = Vec<Vec<i32>>; // TODO: highly non-optimal
+type Matrix = Vec<i32>;
 type Vector = Vec<i32>;
 
 fn main() {
     let mut rng = rand::thread_rng();
 
     let range = Uniform::new(1, 11);
-    let n: usize = 2usize.pow(11); // I observed pessimization with '14'.
+    let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
 
     let start = time::Instant::now();
     // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
@@ -50,7 +50,7 @@ fn main() {
     let coordinate_iter: Vec<(usize, Coordinates)> =
         hilbert_iter(depth).into_iter().enumerate().collect();
     for (t, (i, j)) in &coordinate_iter {
-        flattened_A[*t] = A[*i][*j];
+        flattened_A[*t] = A[flat_index(*i, *j, n)];
     }
 
     let end = Instant::now();
@@ -93,20 +93,27 @@ fn log2(n: usize) -> usize {
 fn make_matrix(n: usize, low: i32, high: i32) -> Matrix {
     let mut rng = rand::thread_rng(); // TODO: seed!
     let range = Uniform::new(low, high);
-    (0..n)
-        .map(|_| (0..n).map(|_| rng.sample(&range)).collect())
-        .collect()
+    (0..(n * n)).map(|_| rng.sample(&range)).collect()
 }
 
 /// Naive product
 #[allow(non_snake_case)]
 fn naive_matrix_vector_product(A: &Matrix, v: &Vector, output: &mut Vector, n: usize) {
-    // TODO: put asserts here to make sure no bounds checking happens.
+    // // TODO: put asserts here to make sure no bounds checking happens.
+    // assert_eq!(output.len(), n);
+    // assert_eq!(A.len(), n * n);
+    // assert_eq!(v.len(), n);
     for i in 0..n {
         for j in 0..n {
-            output[i] += A[i][j] * v[j];
+            output[i] += A[flat_index(i, j, n)] * v[j];
         }
     }
+}
+
+/// Converts [i][j] into [n*i+j]
+#[inline]
+fn flat_index(i: usize, j: usize, n: usize) -> usize {
+    n * i + j
 }
 
 #[allow(non_snake_case)]
