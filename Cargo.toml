@@ -8,6 +8,9 @@ edition = "2021"
 [dependencies]
 rand = "0.8.4"
 timeit = "0.1.2"
+rust-macos-perf = { path = "../rust-macos-perf" }
+eyre = "0.6.5"
+color-eyre = "0.5.11"
 
 [profile.release]
 debug = true

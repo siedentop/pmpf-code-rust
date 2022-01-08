@@ -1,4 +1,5 @@
 use rand::{distributions::Uniform, Rng};
+use rust_macos_perf::compare_perf_counters;
 use std::{
     collections::{HashSet, VecDeque},
     time::{self, Instant},
@@ -17,11 +18,13 @@ type Coordinates = (usize, usize);
 type Matrix = Vec<i32>;
 type Vector = Vec<i32>;
 
-fn main() {
+fn main() -> eyre::Result<()> {
     let mut rng = rand::thread_rng();
 
+    rust_macos_perf::init()?;
+
     let range = Uniform::new(1, 11);
-    let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
+    let n: usize = 2usize.pow(5); // I observed a slowdown for the Hilbert code with '2^14'.
 
     let start = time::Instant::now();
     // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
@@ -40,6 +43,10 @@ fn main() {
     let total_n_seconds = timeit_loops! {timeit_count,
         {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
     };
+
+    let pc_naive = rust_macos_perf::timeit_loops! {timeit_count,
+        {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
+    }?;
 
     // reorder data
     let start = Instant::now();
@@ -64,6 +71,10 @@ fn main() {
         {hilbert_matrix_vector_product(&flattened_A,&v, &mut output2, &coordinate_iter);}
     };
 
+    let pc_hilbert = rust_macos_perf::timeit_loops! {timeit_count,
+        {  hilbert_matrix_vector_product(&flattened_A, &v, &mut output2, &coordinate_iter); }
+    }?;
+
     assert_eq!(output1, output2);
 
     // Print timings
@@ -82,6 +93,15 @@ fn main() {
         "Improvement: {}%",
         100. * (1.0 - (total_h_seconds / total_n_seconds))
     );
+
+    println!("Naive: {:?}", pc_naive);
+    println!("Hilbert: {:?}", pc_hilbert);
+    println!(
+        "Comparison: {}",
+        compare_perf_counters(&pc_naive, &pc_hilbert)
+    );
+
+    Ok(())
 }
 
 fn log2(n: usize) -> usize {
