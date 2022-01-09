@@ -5,7 +5,8 @@ range {0, 1, ..., n^2 - 1} is mapped to coordinates
 {0, 1, ..., n-1} x {0, 1, ..., n-1}. In the classical Hilbert curve,
 the continuous interval [0,1] is mapped to the unit square [0,1]^2.
 */
-use rand::distributions::Uniform;
+use rand::{distributions::Uniform, Rng};
+use rand_chacha::ChaCha8Rng;
 use std::collections::{HashSet, VecDeque};
 
 pub type Coordinates = (usize, usize);
@@ -146,6 +147,29 @@ pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
         }
     }
     return result;
+}
+
+/// Generate (A, v) as inputs for matrix multiplication
+pub fn setup_inputs(n: usize, mut rng: ChaCha8Rng) -> (Vec<i32>, Vec<i32>) {
+    let range = Uniform::new(1, 11);
+
+    #[allow(non_snake_case)]
+    let A = make_matrix(n, 1, 11, &mut rng);
+    let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
+    assert_eq!(v.len(), n);
+    (A, v)
+}
+
+/// Setup (coordinates, flattened_A) for Hilbert multiplication
+#[allow(non_snake_case)]
+pub fn setup_hilbert(n: usize, A: Vec<i32>) -> (Vec<(usize, (usize, usize))>, Vec<i32>) {
+    assert_eq!(n * n, A.len());
+    let depth: usize = log2(n);
+    let coordinate_iter: Vec<(usize, Coordinates)> =
+        hilbert_iter(depth).into_iter().enumerate().collect();
+    #[allow(non_snake_case)]
+    let flattened_A = flatten_matrix(&coordinate_iter, A, n);
+    (coordinate_iter, flattened_A)
 }
 
 #[cfg(test)]

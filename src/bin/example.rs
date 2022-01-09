@@ -1,30 +1,25 @@
+#[allow(non_snake_case)]
 use jeremy_kun_math_rust::{
-    flatten_matrix, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
-    naive_matrix_vector_product, Coordinates, Vector,
+    hilbert_matrix_vector_product, naive_matrix_vector_product, setup_hilbert, setup_inputs, Vector,
 };
-use rand::Rng;
 /// The original example from Jeremy Kun's Python code.
-use rand::{distributions::Uniform, SeedableRng};
+use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rust_macos_perf::compare_perf_counters;
 use std::time::{self, Instant};
 use timeit::timeit_loops;
 
 fn main() -> eyre::Result<()> {
-    let mut rng = ChaCha8Rng::seed_from_u64(10);
-
+    let rng = ChaCha8Rng::seed_from_u64(10);
     rust_macos_perf::init()?;
 
-    let range = Uniform::new(1, 11);
     let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
 
     let start = time::Instant::now();
-    // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
+
     #[allow(non_snake_case)]
-    let A = make_matrix(n, 1, 11, &mut rng);
-    // v = [random.randint(1, 10) for _ in range(n)]
-    let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
-    assert_eq!(v.len(), n);
+    let (A, v) = setup_inputs(n, rng);
+
     let mut output1: Vector = vec![0; n];
     let mut output2: Vector = vec![0; n];
     let end = time::Instant::now();
@@ -43,11 +38,8 @@ fn main() -> eyre::Result<()> {
     // reorder data
     let start = Instant::now();
 
-    let depth: usize = log2(n);
-    let coordinate_iter: Vec<(usize, Coordinates)> =
-        hilbert_iter(depth).into_iter().enumerate().collect();
     #[allow(non_snake_case)]
-    let flattened_A = flatten_matrix(&coordinate_iter, A, n);
+    let (coordinate_iter, flattened_A) = setup_hilbert(n, A);
 
     let end = Instant::now();
     println!(
