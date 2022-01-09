@@ -1,5 +1,5 @@
 use jeremy_kun_math_rust::{
-    flat_index, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
+    flatten_matrix, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
     naive_matrix_vector_product, Coordinates, Vector,
 };
 /// The original example from Jeremy Kun's Python code.
@@ -41,14 +41,11 @@ fn main() -> eyre::Result<()> {
     // reorder data
     let start = Instant::now();
 
-    #[allow(non_snake_case)]
-    let mut flattened_A = vec![0; n * n];
     let depth: usize = log2(n);
     let coordinate_iter: Vec<(usize, Coordinates)> =
         hilbert_iter(depth).into_iter().enumerate().collect();
-    for (t, (i, j)) in &coordinate_iter {
-        flattened_A[*t] = A[flat_index(*i, *j, n)];
-    }
+    #[allow(non_snake_case)]
+    let flattened_A = flatten_matrix(&coordinate_iter, A, n);
 
     let end = Instant::now();
     println!(

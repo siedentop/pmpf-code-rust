@@ -41,8 +41,22 @@ pub fn naive_matrix_vector_product(A: &Matrix, v: &Vector, output: &mut Vector, 
 
 /// Converts [i][j] into [n*i+j]
 #[inline]
-pub fn flat_index(i: usize, j: usize, n: usize) -> usize {
+fn flat_index(i: usize, j: usize, n: usize) -> usize {
     n * i + j
+}
+
+/// Flatten matrix A according to the provided Hilbert coordinates.
+#[allow(non_snake_case)]
+pub fn flatten_matrix(
+    coordinate_iter: &Vec<(usize, (usize, usize))>,
+    A: Vec<i32>,
+    n: usize,
+) -> Vector {
+    let mut flattened_A = vec![0; n * n];
+    for (t, (i, j)) in coordinate_iter {
+        flattened_A[*t] = A[flat_index(*i, *j, n)];
+    }
+    flattened_A
 }
 
 #[allow(non_snake_case)]
