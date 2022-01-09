@@ -150,11 +150,11 @@ pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
 }
 
 /// Generate (A, v) as inputs for matrix multiplication
-pub fn setup_inputs(n: usize, mut rng: ChaCha8Rng) -> (Vec<i32>, Vec<i32>) {
+pub fn setup_inputs(n: usize, rng: &mut ChaCha8Rng) -> (Vec<i32>, Vec<i32>) {
     let range = Uniform::new(1, 11);
 
     #[allow(non_snake_case)]
-    let A = make_matrix(n, 1, 11, &mut rng);
+    let A = make_matrix(n, 1, 11, rng);
     let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
     assert_eq!(v.len(), n);
     (A, v)

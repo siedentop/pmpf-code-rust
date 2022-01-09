@@ -10,7 +10,7 @@ use std::time::{self, Instant};
 use timeit::timeit_loops;
 
 fn main() -> eyre::Result<()> {
-    let rng = ChaCha8Rng::seed_from_u64(10);
+    let mut rng = ChaCha8Rng::seed_from_u64(10);
     rust_macos_perf::init()?;
 
     let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
@@ -18,7 +18,7 @@ fn main() -> eyre::Result<()> {
     let start = time::Instant::now();
 
     #[allow(non_snake_case)]
-    let (A, v) = setup_inputs(n, rng);
+    let (A, v) = setup_inputs(n, &mut rng);
 
     let mut output1: Vector = vec![0; n];
     let mut output2: Vector = vec![0; n];
