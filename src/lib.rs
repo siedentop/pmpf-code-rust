@@ -1,11 +1,3 @@
-use rand::{distributions::Uniform, Rng};
-use rust_macos_perf::compare_perf_counters;
-use std::{
-    collections::{HashSet, VecDeque},
-    time::{self, Instant},
-};
-use timeit::timeit_loops;
-
 /** Algorithms for converting 2D coordinates to and from the Hilbert index.
 
 Here the Hilbert curve has been scaled and discretized, so that the
@@ -13,104 +5,21 @@ range {0, 1, ..., n^2 - 1} is mapped to coordinates
 {0, 1, ..., n-1} x {0, 1, ..., n-1}. In the classical Hilbert curve,
 the continuous interval [0,1] is mapped to the unit square [0,1]^2.
 */
+use rand::{distributions::Uniform, Rng};
+use std::collections::{HashSet, VecDeque};
 
-type Coordinates = (usize, usize);
+pub type Coordinates = (usize, usize);
 type Matrix = Vec<i32>;
-type Vector = Vec<i32>;
+pub type Vector = Vec<i32>;
 
-fn main() -> eyre::Result<()> {
-    let mut rng = rand::thread_rng();
-
-    rust_macos_perf::init()?;
-
-    let range = Uniform::new(1, 11);
-    let n: usize = 2usize.pow(5); // I observed a slowdown for the Hilbert code with '2^14'.
-
-    let start = time::Instant::now();
-    // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
-    #[allow(non_snake_case)]
-    let A = make_matrix(n, 1, 11);
-    // v = [random.randint(1, 10) for _ in range(n)]
-    let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
-    assert_eq!(v.len(), n);
-    let mut output1: Vector = vec![0; n];
-    let mut output2: Vector = vec![0; n];
-    let end = time::Instant::now();
-    println!("Initial data generation: {}s", (end - start).as_secs_f32());
-
-    // Naive
-    let timeit_count = 20;
-    let total_n_seconds = timeit_loops! {timeit_count,
-        {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
-    };
-
-    let pc_naive = rust_macos_perf::timeit_loops! {timeit_count,
-        {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
-    }?;
-
-    // reorder data
-    let start = Instant::now();
-
-    #[allow(non_snake_case)]
-    let mut flattened_A = vec![0; n * n];
-    let depth: usize = log2(n);
-    let coordinate_iter: Vec<(usize, Coordinates)> =
-        hilbert_iter(depth).into_iter().enumerate().collect();
-    for (t, (i, j)) in &coordinate_iter {
-        flattened_A[*t] = A[flat_index(*i, *j, n)];
-    }
-
-    let end = Instant::now();
-    println!(
-        "hilbert data preprocessing: {}s",
-        (end - start).as_secs_f32()
-    );
-
-    // Hilbert Product
-    let total_h_seconds = timeit_loops! {timeit_count,
-        {hilbert_matrix_vector_product(&flattened_A,&v, &mut output2, &coordinate_iter);}
-    };
-
-    let pc_hilbert = rust_macos_perf::timeit_loops! {timeit_count,
-        {  hilbert_matrix_vector_product(&flattened_A, &v, &mut output2, &coordinate_iter); }
-    }?;
-
-    assert_eq!(output1, output2);
-
-    // Print timings
-    println!(
-        "Naive: {}s ({}s per)",
-        total_n_seconds,
-        total_n_seconds / (timeit_count as f64)
-    );
-
-    println!(
-        "Hilbert: {}s ({} s per)",
-        total_h_seconds,
-        total_h_seconds / (timeit_count as f64)
-    );
-    println!(
-        "Improvement: {}%",
-        100. * (1.0 - (total_h_seconds / total_n_seconds))
-    );
-
-    println!("Naive: {:?}", pc_naive);
-    println!("Hilbert: {:?}", pc_hilbert);
-    println!(
-        "Comparison: {}",
-        compare_perf_counters(&pc_naive, &pc_hilbert)
-    );
-
-    Ok(())
-}
-
-fn log2(n: usize) -> usize {
+#[inline]
+pub fn log2(n: usize) -> usize {
     (n as f64).log2().floor() as usize
 }
 
 /// Create a matrix.
 /// note that the representation Vec of Vec is not optimal.
-fn make_matrix(n: usize, low: i32, high: i32) -> Matrix {
+pub fn make_matrix(n: usize, low: i32, high: i32) -> Matrix {
     let mut rng = rand::thread_rng(); // TODO: seed!
     let range = Uniform::new(low, high);
     (0..(n * n)).map(|_| rng.sample(&range)).collect()
@@ -118,7 +27,7 @@ fn make_matrix(n: usize, low: i32, high: i32) -> Matrix {
 
 /// Naive product
 #[allow(non_snake_case)]
-fn naive_matrix_vector_product(A: &Matrix, v: &Vector, output: &mut Vector, n: usize) {
+pub fn naive_matrix_vector_product(A: &Matrix, v: &Vector, output: &mut Vector, n: usize) {
     // // TODO: put asserts here to make sure no bounds checking happens.
     // assert_eq!(output.len(), n);
     // assert_eq!(A.len(), n * n);
@@ -132,12 +41,12 @@ fn naive_matrix_vector_product(A: &Matrix, v: &Vector, output: &mut Vector, n: u
 
 /// Converts [i][j] into [n*i+j]
 #[inline]
-fn flat_index(i: usize, j: usize, n: usize) -> usize {
+pub fn flat_index(i: usize, j: usize, n: usize) -> usize {
     n * i + j
 }
 
 #[allow(non_snake_case)]
-fn hilbert_matrix_vector_product(
+pub fn hilbert_matrix_vector_product(
     flattened_A: &Vector,
     v: &Vector,
     output: &mut Vector,
@@ -148,7 +57,7 @@ fn hilbert_matrix_vector_product(
     }
 }
 
-fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
+pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
     let mut result = Vec::new();
     let mut queue = VecDeque::from([('H', depth)]);
 
