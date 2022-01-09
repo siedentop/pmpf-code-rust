@@ -306,9 +306,9 @@ dependencies = [
  "color-eyre",
  "eyre",
  "insta",
+ "macos-perf",
  "rand",
  "rand_chacha",
- "rust-macos-perf",
  "timeit",
 ]
 
@@ -353,6 +353,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "macos-perf"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fd14af7a886b041a1ab8ac980ce9a2e27287fd607cb8a9a8b747269a52c3def"
+dependencies = [
+ "bindgen",
+ "cc",
+ "log",
+ "thiserror",
 ]
 
 [[package]]
@@ -501,16 +513,6 @@ name = "regex-syntax"
 version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
-
-[[package]]
-name = "rust-macos-perf"
-version = "0.1.0"
-dependencies = [
- "bindgen",
- "cc",
- "log",
- "thiserror",
-]
 
 [[package]]
 name = "rustc-demangle"
