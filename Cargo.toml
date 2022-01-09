@@ -11,6 +11,10 @@ timeit = "0.1.2"
 rust-macos-perf = { path = "../rust-macos-perf" }
 eyre = "0.6.5"
 color-eyre = "0.5.11"
+rand_chacha = "0.3.1"
 
 [profile.release]
 debug = true
+
+[dev-dependencies]
+insta = "1.10.0"

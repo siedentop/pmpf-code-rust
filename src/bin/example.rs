@@ -2,16 +2,16 @@ use jeremy_kun_math_rust::{
     flatten_matrix, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
     naive_matrix_vector_product, Coordinates, Vector,
 };
+use rand::Rng;
 /// The original example from Jeremy Kun's Python code.
-use rand::{distributions::Uniform, Rng};
+use rand::{distributions::Uniform, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 use rust_macos_perf::compare_perf_counters;
 use std::time::{self, Instant};
 use timeit::timeit_loops;
 
-// TODO: Seed all thread_rng()!
-
 fn main() -> eyre::Result<()> {
-    let mut rng = rand::thread_rng();
+    let mut rng = ChaCha8Rng::seed_from_u64(10);
 
     rust_macos_perf::init()?;
 
@@ -21,7 +21,7 @@ fn main() -> eyre::Result<()> {
     let start = time::Instant::now();
     // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
     #[allow(non_snake_case)]
-    let A = make_matrix(n, 1, 11);
+    let A = make_matrix(n, 1, 11, &mut rng);
     // v = [random.randint(1, 10) for _ in range(n)]
     let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
     assert_eq!(v.len(), n);

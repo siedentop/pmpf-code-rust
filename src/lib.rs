@@ -5,7 +5,7 @@ range {0, 1, ..., n^2 - 1} is mapped to coordinates
 {0, 1, ..., n-1} x {0, 1, ..., n-1}. In the classical Hilbert curve,
 the continuous interval [0,1] is mapped to the unit square [0,1]^2.
 */
-use rand::{distributions::Uniform, Rng};
+use rand::distributions::Uniform;
 use std::collections::{HashSet, VecDeque};
 
 pub type Coordinates = (usize, usize);
@@ -19,8 +19,7 @@ pub fn log2(n: usize) -> usize {
 
 /// Create a matrix.
 /// note that the representation Vec of Vec is not optimal.
-pub fn make_matrix(n: usize, low: i32, high: i32) -> Matrix {
-    let mut rng = rand::thread_rng(); // TODO: seed!
+pub fn make_matrix<R: rand::Rng>(n: usize, low: i32, high: i32, rng: &mut R) -> Matrix {
     let range = Uniform::new(low, high);
     (0..(n * n)).map(|_| rng.sample(&range)).collect()
 }
@@ -153,7 +152,10 @@ pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
 mod test {
     use std::time::{self};
 
-    use rand::{distributions::Uniform, Rng};
+    use insta::assert_yaml_snapshot;
+    use rand::distributions::Uniform;
+    use rand::Rng;
+    use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
     use timeit::timeit_loops;
 
     use crate::{
@@ -163,15 +165,15 @@ mod test {
 
     #[test]
     fn test_equality_of_implementation() {
-        let mut rng = rand::thread_rng();
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
 
         let range = Uniform::new(1, 11);
-        let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
+        let n: usize = 2usize.pow(8);
 
         let start = time::Instant::now();
         // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
         #[allow(non_snake_case)]
-        let A = make_matrix(n, 1, 11);
+        let A = make_matrix(n, 1, 11, &mut rng);
         // v = [random.randint(1, 10) for _ in range(n)]
         let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
         assert_eq!(v.len(), n);
@@ -181,7 +183,7 @@ mod test {
         println!("Initial data generation: {}s", (end - start).as_secs_f32());
 
         // Naive
-        let timeit_count = 20;
+        let timeit_count = 3;
         let _ = timeit_loops! {timeit_count,
             {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
         };
@@ -200,5 +202,6 @@ mod test {
         };
 
         assert_eq!(output1, output2);
+        assert_yaml_snapshot!(output2);
     }
 }
