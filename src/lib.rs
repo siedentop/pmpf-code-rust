@@ -148,3 +148,57 @@ pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
     }
     return result;
 }
+
+#[cfg(test)]
+mod test {
+    use std::time::{self};
+
+    use rand::{distributions::Uniform, Rng};
+    use timeit::timeit_loops;
+
+    use crate::{
+        flatten_matrix, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
+        naive_matrix_vector_product, Coordinates,
+    };
+
+    #[test]
+    fn test_equality_of_implementation() {
+        let mut rng = rand::thread_rng();
+
+        let range = Uniform::new(1, 11);
+        let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
+
+        let start = time::Instant::now();
+        // A = [[random.randint(1, 10) for _ in range(n)] for _ in range(n)]
+        #[allow(non_snake_case)]
+        let A = make_matrix(n, 1, 11);
+        // v = [random.randint(1, 10) for _ in range(n)]
+        let v: Vec<_> = (0..n).map(|_| rng.sample(&range)).collect();
+        assert_eq!(v.len(), n);
+        let mut output1 = vec![0; n];
+        let mut output2 = vec![0; n];
+        let end = time::Instant::now();
+        println!("Initial data generation: {}s", (end - start).as_secs_f32());
+
+        // Naive
+        let timeit_count = 20;
+        let _ = timeit_loops! {timeit_count,
+            {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
+        };
+
+        // reorder data
+
+        let depth: usize = log2(n);
+        let coordinate_iter: Vec<(usize, Coordinates)> =
+            hilbert_iter(depth).into_iter().enumerate().collect();
+        #[allow(non_snake_case)]
+        let flattened_A = flatten_matrix(&coordinate_iter, A, n);
+
+        // Hilbert Product
+        let _ = timeit_loops! {timeit_count,
+            {hilbert_matrix_vector_product(&flattened_A,&v, &mut output2, &coordinate_iter);}
+        };
+
+        assert_eq!(output1, output2);
+    }
+}

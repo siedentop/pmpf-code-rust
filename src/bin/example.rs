@@ -8,6 +8,8 @@ use rust_macos_perf::compare_perf_counters;
 use std::time::{self, Instant};
 use timeit::timeit_loops;
 
+// TODO: Seed all thread_rng()!
+
 fn main() -> eyre::Result<()> {
     let mut rng = rand::thread_rng();
 
