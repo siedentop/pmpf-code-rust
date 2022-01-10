@@ -3,12 +3,10 @@ name = "jeremy-kun-math-rust"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 rand = "0.8.4"
 timeit = "0.1.2"
-macos-perf = "0.1.1"
+macos-perf = { version = "0.1.1", optional = true }
 eyre = "0.6.5"
 color-eyre = "0.5.11"
 rand_chacha = "0.3.1"
@@ -18,3 +16,4 @@ debug = true
 
 [dev-dependencies]
 insta = "1.10.0"
+

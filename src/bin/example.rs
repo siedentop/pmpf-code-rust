@@ -2,7 +2,8 @@
 use jeremy_kun_math_rust::{
     hilbert_matrix_vector_product, naive_matrix_vector_product, setup_hilbert, setup_inputs, Vector,
 };
-use macos_perf::compare_perf_counters;
+#[cfg(feature = "macos-perf")]
+use macos_perf::{compare_perf_counters, PerformanceCounters};
 /// The original example from Jeremy Kun's Python code.
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -11,6 +12,7 @@ use timeit::timeit_loops;
 
 fn main() -> eyre::Result<()> {
     let mut rng = ChaCha8Rng::seed_from_u64(10);
+    #[cfg(feature = "macos-perf")]
     macos_perf::init()?;
 
     let n: usize = 2usize.pow(11); // I observed a slowdown for the Hilbert code with '2^14'.
@@ -31,6 +33,7 @@ fn main() -> eyre::Result<()> {
         {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
     };
 
+    #[cfg(feature = "macos-perf")]
     let pc_naive = macos_perf::timeit_loops! {timeit_count,
         {  naive_matrix_vector_product(&A, &v, &mut output1, n); }
     }?;
@@ -52,6 +55,7 @@ fn main() -> eyre::Result<()> {
         {hilbert_matrix_vector_product(&flattened_A,&v, &mut output2, &coordinate_iter);}
     };
 
+    #[cfg(feature = "macos-perf")]
     let pc_hilbert = macos_perf::timeit_loops! {timeit_count,
         {  hilbert_matrix_vector_product(&flattened_A, &v, &mut output2, &coordinate_iter); }
     }?;
@@ -75,12 +79,18 @@ fn main() -> eyre::Result<()> {
         100. * (1.0 - (total_h_seconds / total_n_seconds))
     );
 
+    #[cfg(feature = "macos-perf")]
+    print_perf_counters(pc_naive, pc_hilbert);
+    Ok(())
+}
+
+/// Print performance counters.
+#[cfg(feature = "macos-perf")]
+fn print_perf_counters(pc_naive: PerformanceCounters, pc_hilbert: PerformanceCounters) {
     println!("Naive: {:?}", pc_naive);
     println!("Hilbert: {:?}", pc_hilbert);
     println!(
         "Comparison: {}",
         compare_perf_counters(&pc_naive, &pc_hilbert)
     );
-
-    Ok(())
 }
