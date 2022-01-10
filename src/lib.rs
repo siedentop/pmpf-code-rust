@@ -71,82 +71,111 @@ pub fn hilbert_matrix_vector_product(
     }
 }
 
-pub fn hilbert_iter(depth: usize) -> Vec<Coordinates> {
-    let mut result = Vec::new();
-    let mut queue = VecDeque::from([('H', depth)]);
+struct HilbertIter {
+    index: usize,
+    i: usize,
+    j: usize,
+    queue: VecDeque<(char, usize)>,
+    buffer: Option<(usize, Coordinates)>,
+}
 
-    let (mut i, mut j) = (0, 0);
-    let non_terminals: HashSet<char> = "HABC".chars().collect();
-    result.push((i, j));
-
-    while let Some((symbol, depth)) = queue.pop_front() {
-        if depth == 0 && !non_terminals.contains(&symbol) {
-            match symbol {
-                '↑' => {
-                    i += 1;
-                }
-                '↓' => {
-                    i -= 1;
-                }
-                '→' => {
-                    j += 1;
-                }
-                '←' => {
-                    j -= 1;
-                }
-                c => {
-                    panic!("Unexpected symbol: {}", c);
-                }
-            }
-            result.push((i, j));
-        }
-        if depth > 0 {
-            match symbol {
-                'H' => {
-                    queue.push_back(('A', depth - 1));
-                    queue.push_back(('↑', depth - 1));
-                    queue.push_back(('H', depth - 1));
-                    queue.push_back(('→', depth - 1));
-                    queue.push_back(('H', depth - 1));
-                    queue.push_back(('↓', depth - 1));
-                    queue.push_back(('B', depth - 1));
-                }
-                'A' => {
-                    queue.push_back(('H', depth - 1));
-                    queue.push_back(('→', depth - 1));
-                    queue.push_back(('A', depth - 1));
-                    queue.push_back(('↑', depth - 1));
-                    queue.push_back(('A', depth - 1));
-                    queue.push_back(('←', depth - 1));
-                    queue.push_back(('C', depth - 1));
-                }
-                'B' => {
-                    queue.push_back(('C', depth - 1));
-                    queue.push_back(('←', depth - 1));
-                    queue.push_back(('B', depth - 1));
-                    queue.push_back(('↓', depth - 1));
-                    queue.push_back(('B', depth - 1));
-                    queue.push_back(('→', depth - 1));
-                    queue.push_back(('H', depth - 1));
-                }
-                'C' => {
-                    queue.push_back(('B', depth - 1));
-                    queue.push_back(('↓', depth - 1));
-                    queue.push_back(('C', depth - 1));
-                    queue.push_back(('←', depth - 1));
-                    queue.push_back(('C', depth - 1));
-                    queue.push_back(('↑', depth - 1));
-                    queue.push_back(('A', depth - 1));
-                }
-                _ => {
-                    // # terminal up/down/left/right symbols
-                    // # must be preserved until the end
-                    queue.push_back((symbol, depth - 1));
-                }
-            };
+impl HilbertIter {
+    pub fn new(depth: usize) -> Self {
+        Self {
+            index: 1,
+            i: 0,
+            j: 0,
+            queue: VecDeque::from([('H', depth)]),
+            buffer: Some((0, (0, 0))),
         }
     }
-    return result;
+
+    fn step(&mut self) {
+        let non_terminals: HashSet<char> = "HABC".chars().collect();
+
+        while self.buffer.is_none() && !self.queue.is_empty() {
+            let (symbol, depth) = self.queue.pop_front().unwrap();
+            if depth == 0 && !non_terminals.contains(&symbol) {
+                match symbol {
+                    '↑' => {
+                        self.i += 1;
+                    }
+                    '↓' => {
+                        self.i -= 1;
+                    }
+                    '→' => {
+                        self.j += 1;
+                    }
+                    '←' => {
+                        self.j -= 1;
+                    }
+                    c => {
+                        panic!("Unexpected symbol: {}", c);
+                    }
+                }
+                self.buffer = Some((self.index, (self.i, self.j)));
+                self.index += 1;
+            }
+            if depth > 0 {
+                match symbol {
+                    'H' => {
+                        self.queue.push_back(('A', depth - 1));
+                        self.queue.push_back(('↑', depth - 1));
+                        self.queue.push_back(('H', depth - 1));
+                        self.queue.push_back(('→', depth - 1));
+                        self.queue.push_back(('H', depth - 1));
+                        self.queue.push_back(('↓', depth - 1));
+                        self.queue.push_back(('B', depth - 1));
+                    }
+                    'A' => {
+                        self.queue.push_back(('H', depth - 1));
+                        self.queue.push_back(('→', depth - 1));
+                        self.queue.push_back(('A', depth - 1));
+                        self.queue.push_back(('↑', depth - 1));
+                        self.queue.push_back(('A', depth - 1));
+                        self.queue.push_back(('←', depth - 1));
+                        self.queue.push_back(('C', depth - 1));
+                    }
+                    'B' => {
+                        self.queue.push_back(('C', depth - 1));
+                        self.queue.push_back(('←', depth - 1));
+                        self.queue.push_back(('B', depth - 1));
+                        self.queue.push_back(('↓', depth - 1));
+                        self.queue.push_back(('B', depth - 1));
+                        self.queue.push_back(('→', depth - 1));
+                        self.queue.push_back(('H', depth - 1));
+                    }
+                    'C' => {
+                        self.queue.push_back(('B', depth - 1));
+                        self.queue.push_back(('↓', depth - 1));
+                        self.queue.push_back(('C', depth - 1));
+                        self.queue.push_back(('←', depth - 1));
+                        self.queue.push_back(('C', depth - 1));
+                        self.queue.push_back(('↑', depth - 1));
+                        self.queue.push_back(('A', depth - 1));
+                    }
+                    _ => {
+                        // # terminal up/down/left/right symbols
+                        // # must be preserved until the end
+                        self.queue.push_back((symbol, depth - 1));
+                    }
+                };
+            }
+        }
+    }
+}
+
+impl Iterator for HilbertIter {
+    type Item = (usize, Coordinates);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.step();
+        self.buffer.take()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.queue.len(), None)
+    }
 }
 
 /// Generate (A, v) as inputs for matrix multiplication
@@ -165,8 +194,7 @@ pub fn setup_inputs(n: usize, rng: &mut ChaCha8Rng) -> (Vec<i32>, Vec<i32>) {
 pub fn setup_hilbert(n: usize, A: Vec<i32>) -> (Vec<(usize, (usize, usize))>, Vec<i32>) {
     assert_eq!(n * n, A.len());
     let depth: usize = log2(n);
-    let coordinate_iter: Vec<(usize, Coordinates)> =
-        hilbert_iter(depth).into_iter().enumerate().collect();
+    let coordinate_iter: Vec<(usize, Coordinates)> = HilbertIter::new(depth).collect();
     #[allow(non_snake_case)]
     let flattened_A = flatten_matrix(&coordinate_iter, A, n);
     (coordinate_iter, flattened_A)
@@ -183,8 +211,8 @@ mod test {
     use timeit::timeit_loops;
 
     use crate::{
-        flatten_matrix, hilbert_iter, hilbert_matrix_vector_product, log2, make_matrix,
-        naive_matrix_vector_product, Coordinates,
+        flatten_matrix, hilbert_matrix_vector_product, log2, make_matrix,
+        naive_matrix_vector_product, Coordinates, HilbertIter,
     };
 
     #[test]
@@ -215,8 +243,7 @@ mod test {
         // reorder data
 
         let depth: usize = log2(n);
-        let coordinate_iter: Vec<(usize, Coordinates)> =
-            hilbert_iter(depth).into_iter().enumerate().collect();
+        let coordinate_iter: Vec<(usize, Coordinates)> = HilbertIter::new(depth).collect();
         #[allow(non_snake_case)]
         let flattened_A = flatten_matrix(&coordinate_iter, A, n);
 
