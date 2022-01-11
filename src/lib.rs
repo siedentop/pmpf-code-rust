@@ -7,7 +7,7 @@ the continuous interval [0,1] is mapped to the unit square [0,1]^2.
 */
 use rand::{distributions::Uniform, Rng};
 use rand_chacha::ChaCha8Rng;
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 
 pub type Coordinates = (usize, usize);
 type Matrix = Vec<i32>;
@@ -47,14 +47,10 @@ fn flat_index(i: usize, j: usize, n: usize) -> usize {
 
 /// Flatten matrix A according to the provided Hilbert coordinates.
 #[allow(non_snake_case)]
-pub fn flatten_matrix(
-    coordinate_iter: &Vec<(usize, (usize, usize))>,
-    A: Vec<i32>,
-    n: usize,
-) -> Vector {
+pub fn flatten_matrix(depth: usize, A: Vec<i32>, n: usize) -> Vector {
     let mut flattened_A = vec![0; n * n];
-    for (t, (i, j)) in coordinate_iter {
-        flattened_A[*t] = A[flat_index(*i, *j, n)];
+    for (t, (i, j)) in HilbertIter::new(depth) {
+        flattened_A[t] = A[flat_index(i, j, n)];
     }
     flattened_A
 }
@@ -64,14 +60,29 @@ pub fn hilbert_matrix_vector_product(
     flattened_A: &Vector,
     v: &Vector,
     output: &mut Vector,
-    coordinate_iter: &Vec<(usize, Coordinates)>,
+    hilbert_iter: &Vec<(usize, Coordinates)>,
 ) {
-    for (t, (i, j)) in coordinate_iter {
+    for (t, (i, j)) in hilbert_iter {
         output[*i] += flattened_A[*t] * v[*j];
     }
 }
 
+/// `hilbert_matrix_vector_product` but Hilbert index is an iterator.
+#[allow(non_snake_case)]
+pub fn hilbert_matrix_vector_product_iter(
+    flattened_A: &Vector,
+    v: &Vector,
+    output: &mut Vector,
+    depth: usize,
+) {
+    for (t, (i, j)) in HilbertIter::new(depth) {
+        output[i] += flattened_A[t] * v[j];
+    }
+}
+
 struct HilbertIter {
+    /// Number of steps remaining
+    n: usize,
     index: usize,
     i: usize,
     j: usize,
@@ -81,40 +92,46 @@ struct HilbertIter {
 
 impl HilbertIter {
     pub fn new(depth: usize) -> Self {
+        let n = 2usize.pow(depth as u32);
+        let n = n * n + 1;
+        let queue = VecDeque::from([('H', depth)]);
         Self {
+            n,
             index: 1,
             i: 0,
             j: 0,
-            queue: VecDeque::from([('H', depth)]),
+            queue,
             buffer: Some((0, (0, 0))),
         }
     }
 
     fn step(&mut self) {
-        let non_terminals: HashSet<char> = "HABC".chars().collect();
-
         while self.buffer.is_none() && !self.queue.is_empty() {
             let (symbol, depth) = self.queue.pop_front().unwrap();
-            if depth == 0 && !non_terminals.contains(&symbol) {
-                match symbol {
+            if depth == 0 {
+                let non_terminal = match symbol {
                     '↑' => {
                         self.i += 1;
+                        true
                     }
                     '↓' => {
                         self.i -= 1;
+                        true
                     }
                     '→' => {
                         self.j += 1;
+                        true
                     }
                     '←' => {
                         self.j -= 1;
+                        true
                     }
-                    c => {
-                        panic!("Unexpected symbol: {}", c);
-                    }
+                    _ => false,
+                };
+                if non_terminal {
+                    self.buffer = Some((self.index, (self.i, self.j)));
+                    self.index += 1;
                 }
-                self.buffer = Some((self.index, (self.i, self.j)));
-                self.index += 1;
             }
             if depth > 0 {
                 match symbol {
@@ -169,12 +186,17 @@ impl Iterator for HilbertIter {
     type Item = (usize, Coordinates);
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.n > 0 {
+            self.n -= 1;
+        } else {
+            panic!("Hilbert iteration is out of bounds");
+        }
         self.step();
         self.buffer.take()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.queue.len(), None)
+        (self.n, Some(self.n))
     }
 }
 
@@ -191,13 +213,25 @@ pub fn setup_inputs(n: usize, rng: &mut ChaCha8Rng) -> (Vec<i32>, Vec<i32>) {
 
 /// Setup (coordinates, flattened_A) for Hilbert multiplication
 #[allow(non_snake_case)]
-pub fn setup_hilbert(n: usize, A: Vec<i32>) -> (Vec<(usize, (usize, usize))>, Vec<i32>) {
+pub fn setup_hilbert(n: usize, A: Vec<i32>) -> (Vec<(usize, Coordinates)>, Vec<i32>) {
     assert_eq!(n * n, A.len());
     let depth: usize = log2(n);
-    let coordinate_iter: Vec<(usize, Coordinates)> = HilbertIter::new(depth).collect();
+    let hilbert_iter: Vec<_> = HilbertIter::new(depth).collect();
+    println!("Hilbert matrix size: {}", hilbert_iter.len());
+
     #[allow(non_snake_case)]
-    let flattened_A = flatten_matrix(&coordinate_iter, A, n);
-    (coordinate_iter, flattened_A)
+    let flattened_A = flatten_matrix(depth, A, n);
+    (hilbert_iter, flattened_A)
+}
+/// Setup (depth, flattened_A) for Hilbert multiplication
+#[allow(non_snake_case)]
+pub fn setup_hilbert_iter(n: usize, A: Vec<i32>) -> (usize, Vec<i32>) {
+    assert_eq!(n * n, A.len());
+    let depth: usize = log2(n);
+
+    #[allow(non_snake_case)]
+    let flattened_A = flatten_matrix(depth, A, n);
+    (depth, flattened_A)
 }
 
 #[cfg(test)]
@@ -211,8 +245,8 @@ mod test {
     use timeit::timeit_loops;
 
     use crate::{
-        flatten_matrix, hilbert_matrix_vector_product, log2, make_matrix,
-        naive_matrix_vector_product, Coordinates, HilbertIter,
+        hilbert_matrix_vector_product, hilbert_matrix_vector_product_iter, make_matrix,
+        naive_matrix_vector_product,
     };
 
     #[test]
@@ -231,6 +265,7 @@ mod test {
         assert_eq!(v.len(), n);
         let mut output1 = vec![0; n];
         let mut output2 = vec![0; n];
+        let mut output3 = vec![0; n];
         let end = time::Instant::now();
         println!("Initial data generation: {}s", (end - start).as_secs_f32());
 
@@ -241,18 +276,23 @@ mod test {
         };
 
         // reorder data
-
-        let depth: usize = log2(n);
-        let coordinate_iter: Vec<(usize, Coordinates)> = HilbertIter::new(depth).collect();
         #[allow(non_snake_case)]
-        let flattened_A = flatten_matrix(&coordinate_iter, A, n);
+        let (depth, flattened_A) = super::setup_hilbert_iter(n, A.clone());
 
         // Hilbert Product
         let _ = timeit_loops! {timeit_count,
-            {hilbert_matrix_vector_product(&flattened_A,&v, &mut output2, &coordinate_iter);}
+            {hilbert_matrix_vector_product_iter(&flattened_A,&v, &mut output2, depth);}
+        };
+
+        // non-iterative version
+        let (hilbert_iter, flattened_a) = super::setup_hilbert(n, A);
+
+        let _ = timeit_loops! {timeit_count,
+            {hilbert_matrix_vector_product(&flattened_a,&v, &mut output3, &hilbert_iter);}
         };
 
         assert_eq!(output1, output2);
+        assert_eq!(output1, output3);
         assert_yaml_snapshot!(output2);
     }
 }
