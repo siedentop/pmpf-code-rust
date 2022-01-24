@@ -34,3 +34,7 @@ There is a feature flag, called `macos-perf`, which provides more details on mac
 
 Run: `sudo cargo run --features macos-perf --release --quiet --bin example`
 to see more detailed results.
+
+## Benchmark / iai
+
+You can run the benchmark with `cargo bench`. It requires *valgrind* to be installed.

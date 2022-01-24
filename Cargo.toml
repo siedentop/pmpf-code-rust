@@ -16,4 +16,8 @@ debug = true
 
 [dev-dependencies]
 insta = "1.10.0"
+iai = "0.1"
 
+[[bench]]
+name = "my_benchmark"
+harness = false
